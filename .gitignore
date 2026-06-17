@@ -1,0 +1,37 @@
+# Go binaries and build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Coverage
+*.out
+
+# Vendor
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environment and secrets (never commit real keys/configs)
+.env
+.env.*
+*.pem
+*.key
+*.conf
+yggdrasil.conf
+qcoin*.conf
+
+# Logs and runtime
+*.log
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
