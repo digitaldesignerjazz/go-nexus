@@ -1,0 +1,132 @@
+version: '3.8'
+
+# Nexus Ecosystem Docker Compose
+# This file orchestrates containerized components of the Nexus stack.
+# The go-nexus CLI (see main.go) can control this stack via `go-nexus docker up/down` or `start --docker`.
+#
+# IMPORTANT NOTES:
+# - Yggdrasil mesh is often better run **natively** on the host for performance and direct interface access (Tenda Nova, WiFi).
+#   You can still run a containerized Yggdrasil sidecar if needed, but prefer host for core mesh.
+# - For hardware prototypes (Soilnova sensors, Lumia, etc.): use device passthrough or privileged mode carefully.
+# - Blockchain state and agent memory use named volumes for persistence.
+# - Use host networking or macvlan when tight integration with host mesh is required.
+# - Security: Prefer non-root containers, read-only filesystems where possible, and Docker secrets for keys.
+# - Scaling: `docker compose up --scale ai-swarm-agent=5` for multiple agent replicas.
+# - Customization: Duplicate services, add profiles, or create override files (docker-compose.override.yml).
+
+services:
+  go-nexus-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-nexus
+    restart: unless-stopped
+    volumes:
+      - .:/app                    # Source for development / live editing
+      - nexus-data:/data          # Persistent orchestrator state
+      - /var/run/docker.sock:/var/run/docker.sock  # Allow orchestrator to control Docker (optional, use with care)
+    environment:
+      - NEXUS_MODE=docker
+      - NEXUS_ENV=${NEXUS_ENV:-development}
+    networks:
+      - nexus-net
+    # healthcheck:
+    #   test: ["CMD", "go-nexus", "doctor"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+  # === BLOCKCHAIN LAYER ===
+  # Placeholder for XCoin/QCoin node. Replace image/command with real binary when available.
+  qcoin-node:
+    image: alpine:3.19
+    container_name: nexus-qcoin
+    restart: unless-stopped
+    volumes:
+      - nexus-blockchain-data:/data
+    command: >
+      sh -c "echo 'QCoin/XCoin node placeholder - replace with real image/binary' && sleep infinity"
+    networks:
+      - nexus-net
+    # profiles:
+    #   - blockchain
+
+  # === AI SWARM LAYER ===
+  # Example agent runtime. Scale with --scale or deploy multiple named services.
+  ai-swarm-agent:
+    image: alpine:3.19
+    container_name: nexus-ai-swarm
+    restart: unless-stopped
+    volumes:
+      - nexus-ai-data:/data
+    environment:
+      - AGENT_SWARM_SIZE=3
+      - MESH_ENDPOINT=yggdrasil:9001   # Adjust when real mesh service exists
+    command: >
+      sh -c "echo 'AI Swarm Agent placeholder - integrate real runtime (Python/Go/Rust)' && sleep infinity"
+    networks:
+      - nexus-net
+    deploy:
+      replicas: 1   # Change to >1 or use `docker compose up --scale`
+
+  # === PROTOTYPE LAYER ===
+  # Soilnova environmental sensor simulator / bridge
+  soilnova:
+    image: alpine:3.19
+    container_name: nexus-soilnova
+    restart: unless-stopped
+    volumes:
+      - nexus-prototype-data:/data
+    # devices:
+    #   - /dev/i2c-1:/dev/i2c-1   # Example for real hardware I2C passthrough
+    command: >
+      sh -c "echo 'Soilnova prototype placeholder - add sensor code or hardware bridge' && sleep infinity"
+    networks:
+      - nexus-net
+
+  # Vista Nova / Lumia visualization & lighting (example)
+  vista-lumia:
+    image: alpine:3.19
+    container_name: nexus-vista-lumia
+    restart: unless-stopped
+    command: >
+      sh -c "echo 'Vista Nova / Lumia placeholder - visualization & lighting control' && sleep infinity"
+    networks:
+      - nexus-net
+
+  # === OPTIONAL: YGGDRASIL SIDECAR (use host Yggdrasil in most cases) ===
+  # yggdrasil:
+  #   image: yggdrasilnetwork/yggdrasil:latest   # or build your own
+  #   container_name: nexus-yggdrasil
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE
+  #   volumes:
+  #     - ./yggdrasil.conf:/etc/yggdrasil.conf:ro
+  #   network_mode: host   # Important for real mesh visibility
+  #   restart: unless-stopped
+
+networks:
+  nexus-net:
+    driver: bridge
+    # Enable IPv6 if your host and Yggdrasil config support it:
+    # enable_ipv6: true
+    # ipam:
+    #   config:
+    #     - subnet: 2001:db8:1::/64
+
+volumes:
+  nexus-data:
+  nexus-blockchain-data:
+  nexus-ai-data:
+  nexus-prototype-data:
+
+# Usage examples:
+#   docker compose up -d --build
+#   docker compose up --scale ai-swarm-agent=5
+#   docker compose logs -f ai-swarm-agent
+#   docker compose down --remove-orphans
+#
+# Controlled from Go CLI:
+#   go-nexus docker up
+#   go-nexus start --component=all --docker
